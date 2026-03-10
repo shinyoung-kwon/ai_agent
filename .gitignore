@@ -67,3 +67,7 @@ node_modules/
 
 # Huggingface cache
 .huggingface/
+
+# Claude Code
+.claude/
+CLAUDE.md

@@ -1,0 +1,4 @@
+server: network
+tools:
+  - get_regulon
+  - get_tf_target_network

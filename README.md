@@ -20,19 +20,21 @@ Core technologies include:
 
 The system follows a modular multi-agent architecture.
 
-AI agents collaborate to perform the biomarker discovery workflow:
+AI agents collaborate through a 4-step automated loop to rapidly identify high-precision targets:
 
+```
 Transcriptomic Data
       ↓
-Candidate Biomarker Generation Agent
+Step 1. Discovery Agent — 관심 유전자셋(GoI) 규명
       ↓
-Evidence Retrieval Agent
+Step 2. Network Agent — 레귤론(Regulon) 분석 및 TF-Target 네트워크 구축
       ↓
-Evidence Evaluation Agent
+Step 3. Reasoning Agent — Agentic RAG 기반 후보군 필터링 및 타당성 검증
       ↓
-Biomarker Ranking Agent
+Step 4. Validation Agent — 인실리코(In-silico) 시뮬레이션 및 마스터 레귤레이터 확정
       ↓
-Final Report Generation
+Final Biomarker Report
+```
 
 Each agent interacts with external tools through MCP servers.
 
@@ -40,20 +42,21 @@ Each agent interacts with external tools through MCP servers.
 
 ## Agent Roles
 
-### Candidate Generation Agent
-Identifies potential biomarker candidates from transcriptomic data.
+### Agent A — Discovery Agent (Step 1)
+Identifies genes of interest (GoI) from transcriptomic data.
+Analyzes gene expression profiles to select initial biomarker candidates.
 
-### Evidence Retrieval Agent
-Retrieves supporting evidence from scientific literature and biological databases.
+### Agent B — Network Agent (Step 2)
+Performs regulon analysis and constructs TF-Target networks.
+Maps regulatory relationships between transcription factors and target genes.
 
-### Evidence Evaluation Agent
-Analyzes the reliability and relevance of retrieved evidence.
+### Agent C — Reasoning Agent (Step 3)
+Filters and validates biomarker candidates using Agentic RAG.
+Retrieves scientific literature and evaluates biological plausibility.
 
-### Biomarker Ranking Agent
-Ranks biomarker candidates based on evidence strength.
-
-### Report Generation Agent
-Produces structured explanations and final biomarker reports.
+### Agent D — Validation Agent (Step 4)
+Runs in-silico simulation to validate candidates.
+Determines final master regulators and produces the biomarker report.
 
 ---
 
@@ -65,7 +68,7 @@ ai_agent_pj
 ├── README.md          # project documentation
 ├── .gitignore         # files and folders ignored by git
 ├── .env               # environment variables (not committed)
-├── requirements.txt   # python dependencies
+├── pyproject.toml     # project metadata and dependencies
 │
 ├── apps
 │   └── agent
@@ -99,22 +102,8 @@ ai_agent_pj
 │   ├── indices          # vector database indexes
 │   └── cache            # temporary cache files
 │
-└── mcp-servers          # MCP tool servers
+└── mcp-servers              # MCP tool servers (test mock)
+    ├── test_discovery_server.py  # Agent A — gene expression mock
+    ├── test_network_server.py    # Agent B — TF-Target network mock
+    └── test_validation_server.py # Agent D — in-silico simulation mock
 ```
-
-
-  # MCP tool servers for external tools
-
-configs/
-  dev.yaml
-  prompts.yaml
-
-scripts/
-  bootstrap.sh
-  build_index.sh
-  run_local.sh
-
-data/
-  raw/
-  processed/
-  indices/
