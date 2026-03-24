@@ -7,6 +7,9 @@ from langgraph.graph import StateGraph, START, END
 
 from app.graph.state import AgentState
 from app.utils.config import get_llm, get_prompts
+from app.utils.messages import get_tool_loop_messages, format_previous_summaries
+from app.services.network_service import parse_network_data
+from app.services.summary_service import summarize_network
 
 
 def build_network_subgraph(tools: list) -> StateGraph:
@@ -24,26 +27,42 @@ def build_network_subgraph(tools: list) -> StateGraph:
 
     async def llm_call(state: AgentState):
         candidates = state.get("candidates", [])
+        summaries_ctx = format_previous_summaries(
+            state.get("stage_summaries", [])
+        )
+        print(f"\n[Agent B - Network] LLM 호출 중... (입력 유전자: {candidates})")
         messages = [
             SystemMessage(content=system_prompt),
             HumanMessage(content=(
+                f"{summaries_ctx}\n" if summaries_ctx else ""
                 f"후보 유전자 목록: {', '.join(candidates)}\n"
                 "이 유전자들의 레귤론과 TF-Target 네트워크를 조회하세요."
             )),
         ]
-        messages.extend(state.get("messages", []))
+        messages.extend(get_tool_loop_messages(state.get("messages", [])))
         response = await llm_with_tools.ainvoke(messages)
+        if hasattr(response, "tool_calls") and response.tool_calls:
+            tool_names = [tc["name"] for tc in response.tool_calls]
+            print(f"[Agent B - Network] 도구 호출 요청: {tool_names}")
         return {"messages": [response]}
 
     async def tool_node(state: AgentState):
         last_message = state["messages"][-1]
         results = []
         for tool_call in last_message.tool_calls:
-            tool = tools_by_name[tool_call["name"]]
-            result = await tool.ainvoke(tool_call["args"])
-            results.append(
-                ToolMessage(content=str(result), tool_call_id=tool_call["id"])
-            )
+            tool = tools_by_name.get(tool_call["name"])
+            if tool is None:
+                results.append(ToolMessage(
+                    content=f"Error: unknown tool '{tool_call['name']}'",
+                    tool_call_id=tool_call["id"],
+                ))
+                continue
+            print(f"[Agent B - Network] 도구 실행: {tool_call['name']}({tool_call['args']})")
+            try:
+                result = await tool.ainvoke(tool_call["args"])
+                results.append(ToolMessage(content=str(result), tool_call_id=tool_call["id"]))
+            except Exception as e:
+                results.append(ToolMessage(content=f"Error: {e}", tool_call_id=tool_call["id"]))
         return {"messages": results}
 
     def should_continue(state: AgentState) -> Literal["tool_node", "extract"]:
@@ -55,7 +74,20 @@ def build_network_subgraph(tools: list) -> StateGraph:
     async def extract_network(state: AgentState):
         """Extract network data from the final LLM response."""
         last_message = state["messages"][-1]
-        return {"network_data": {"raw_response": last_message.content}}
+        content = last_message.content
+        if isinstance(content, list):
+            content = " ".join(
+                block.get("text", "") if isinstance(block, dict) else str(block)
+                for block in content
+            )
+        network_data = parse_network_data(content)
+        summary = summarize_network(content, network_data)
+        print(f"[Agent B - Network] 완료! 유전자 {len(network_data['genes'])}개 추출됨")
+        print("-" * 50)
+        return {
+            "network_data": network_data,
+            "stage_summaries": [summary],
+        }
 
     graph = StateGraph(AgentState)
     graph.add_node("llm_call", llm_call)

@@ -11,12 +11,17 @@ dependencies = [
     "pydantic",
     # MCP servers
     "mcp",
-    "httpx",
+    # Tracing
+    "langsmith",
     # Utils
     "python-dotenv",
     "pyyaml",
     # RAG / Vector search
     "faiss-cpu",
+    # Bio analysis (sample — may remove later)
+    "pydeseq2",
+    "numpy",
+    "pandas",
 ]
 
 [project.optional-dependencies]

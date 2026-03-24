@@ -13,9 +13,9 @@ from app.tools.registry import get_tools_for_agent
 async def build_graph():
     """Build and compile the main pipeline graph."""
     # Load tools for each agent from MCP servers
-    discovery_tools, disc_session, disc_ctx = await get_tools_for_agent("discovery")
-    network_tools, net_session, net_ctx = await get_tools_for_agent("network")
-    validation_tools, val_session, val_ctx = await get_tools_for_agent("validation")
+    discovery_tools, disc_stack = await get_tools_for_agent("discovery")
+    network_tools, net_stack = await get_tools_for_agent("network")
+    validation_tools, val_stack = await get_tools_for_agent("validation")
 
     # Build subgraphs
     discovery_graph = build_discovery_subgraph(discovery_tools)
@@ -37,9 +37,6 @@ async def build_graph():
     main_graph.add_edge("validation", END)
 
     compiled = main_graph.compile()
+    mcp_stacks = [disc_stack, net_stack, val_stack]
 
-    # Store sessions/contexts for cleanup
-    compiled._mcp_sessions = [disc_session, net_session, val_session]
-    compiled._mcp_contexts = [disc_ctx, net_ctx, val_ctx]
-
-    return compiled
+    return compiled, mcp_stacks

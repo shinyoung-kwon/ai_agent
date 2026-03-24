@@ -30,16 +30,33 @@ def get_prompts() -> dict:
 
 def get_llm():
     """Create an LLM instance based on dev.yaml config."""
+    from langchain.chat_models import init_chat_model
+
     config = get_config()
     llm_config = config["llm"]
-    provider = llm_config.get("provider", "anthropic")
 
-    if provider == "anthropic":
-        from langchain_anthropic import ChatAnthropic
+    return init_chat_model(
+        llm_config["model"],
+        temperature=llm_config.get("temperature", 0),
+    )
 
-        return ChatAnthropic(
-            model=llm_config["model"],
-            temperature=llm_config.get("temperature", 0),
-        )
 
-    raise ValueError(f"Unsupported LLM provider: {provider}")
+def setup_langsmith():
+    """Configure LangSmith tracing from dev.yaml and .env."""
+    config = get_config()
+    ls_config = config.get("langsmith", {})
+    project_name = ls_config.get("project", "default")
+
+    os.environ.setdefault("LANGSMITH_TRACING", "true")
+    os.environ.setdefault("LANGSMITH_PROJECT", project_name)
+
+    if not os.environ.get("LANGSMITH_API_KEY"):
+        print("[LangSmith] WARNING: LANGSMITH_API_KEY not set. Tracing disabled.")
+        os.environ["LANGSMITH_TRACING"] = "false"
+    else:
+        print(f"[LangSmith] Tracing enabled — project: {project_name}")
+
+
+def get_project_root() -> Path:
+    """Return the project root directory."""
+    return _PROJECT_ROOT

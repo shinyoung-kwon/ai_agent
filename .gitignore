@@ -71,3 +71,4 @@ node_modules/
 # Claude Code
 .claude/
 CLAUDE.md
+skills-lock.json

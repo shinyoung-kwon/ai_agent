@@ -3,14 +3,17 @@
 import asyncio
 
 from app.graph.builder import build_graph
+from app.utils.config import setup_langsmith
 
 
 async def run():
     """Build graph, get user input, run pipeline, print results."""
-    print("=== AI Biomarker Discovery Agent ===")
+    setup_langsmith()
+
+    print("\n=== AI Biomarker Discovery Agent ===")
     print("파이프라인을 초기화 중...")
 
-    graph = await build_graph()
+    graph, mcp_stacks = await build_graph()
 
     print("초기화 완료!\n")
 
@@ -28,6 +31,7 @@ async def run():
         "network_data": {},
         "reasoning": "",
         "validation_results": [],
+        "stage_summaries": [],
     }
 
     result = await graph.ainvoke(initial_state)
@@ -38,13 +42,13 @@ async def run():
     print(f"\n[Reasoning] 분석:\n{result.get('reasoning', '')}")
     print(f"\n[Validation] 검증 결과: {result.get('validation_results', [])}")
 
-    # Cleanup MCP sessions
-    for session in getattr(graph, "_mcp_sessions", []):
-        if session:
-            await session.__aexit__(None, None, None)
-    for ctx in getattr(graph, "_mcp_contexts", []):
-        if ctx:
-            await ctx.__aexit__(None, None, None)
+    # Cleanup MCP connections (suppress anyio cancel scope errors on exit)
+    for stack in mcp_stacks:
+        if stack:
+            try:
+                await stack.aclose()
+            except BaseException:
+                pass
 
 
 def main():
