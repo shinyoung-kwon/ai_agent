@@ -1,0 +1,4 @@
+server: validation
+tools:
+  - run_simulation
+  - batch_simulation

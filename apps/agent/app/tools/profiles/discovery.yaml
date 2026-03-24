@@ -1,0 +1,4 @@
+server: discovery
+tools:
+  - get_expression
+  - get_deg_list

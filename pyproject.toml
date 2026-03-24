@@ -1,0 +1,35 @@
+[project]
+name = "ai-agent"
+version = "0.1.0"
+description = "LangGraph 기반 멀티 에이전트 바이오마커 발견 시스템"
+requires-python = ">=3.11"
+dependencies = [
+    # LangGraph / LLM
+    "langchain",
+    "langchain-anthropic",
+    "langgraph",
+    "pydantic",
+    # MCP servers
+    "mcp",
+    # Tracing
+    "langsmith",
+    # Utils
+    "python-dotenv",
+    "pyyaml",
+    # RAG / Vector search
+    "faiss-cpu",
+    # Bio analysis (sample — may remove later)
+    "pydeseq2",
+    "numpy",
+    "pandas",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff",
+    "pytest",
+    "pytest-asyncio",
+]
+
+[tool.setuptools.packages.find]
+where = ["apps/agent"]

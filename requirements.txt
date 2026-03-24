@@ -1,9 +1,0 @@
-# 예시
-langchain
-langgraph
-pydantic
-python-dotenv
-pyyaml
-faiss-cpu
-
-# git clone 후, pip install -r requirements.txt 으로 설치
