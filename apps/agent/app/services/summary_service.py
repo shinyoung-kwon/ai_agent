@@ -1,6 +1,6 @@
 """Summary service — generate concise stage summaries for inter-agent context."""
 
-_MAX_LENGTH = 300
+_MAX_LENGTH = 10000
 
 
 def _truncate(text: str, max_length: int = _MAX_LENGTH) -> str:

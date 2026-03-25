@@ -31,7 +31,7 @@ def build_discovery_subgraph(tools: list) -> StateGraph:
             SystemMessage(content=system_prompt),
             HumanMessage(content=(
                 f"질환/주제: {state['query']}\n"
-                "차등발현유전자(DEG)를 조회하여 바이오마커 후보 목록을 도출하세요."
+                "차등발현유전자(DEG)를 조회하여 바이오마커 후보 목록을 도출하고 선정된 이유를 간략히 설명해주세요."
             )),
         ]
         messages.extend(get_tool_loop_messages(state.get("messages", [])))

@@ -1,6 +1,8 @@
 """Entrypoint — accept user query, run the pipeline, print results."""
 
 import asyncio
+import sys
+import os
 
 from app.graph.builder import build_graph
 from app.utils.config import setup_langsmith
@@ -37,18 +39,30 @@ async def run():
     result = await graph.ainvoke(initial_state)
 
     print("\n=== 파이프라인 완료 ===")
-    print(f"\n[Discovery] 후보 유전자: {result.get('candidates', [])}")
-    print(f"\n[Network] 네트워크 데이터: {result.get('network_data', {})}")
+
+    candidates = result.get("candidates", [])
+    print(f"\n[Discovery] 후보 유전자: {', '.join(candidates)}")
+
+    network = result.get("network_data", {})
+    print(f"\n[Network] 네트워크 유전자: {', '.join(network.get('genes', []))}")
+
     print(f"\n[Reasoning] 분석:\n{result.get('reasoning', '')}")
-    print(f"\n[Validation] 검증 결과: {result.get('validation_results', [])}")
+
+    validation = result.get("validation_results", [])
+    if validation:
+        confirmed = validation[0].get("confirmed_biomarkers", [])
+        print(f"\n[Validation] 확정 바이오마커: {', '.join(confirmed)}")
 
     # Cleanup MCP connections (suppress anyio cancel scope errors on exit)
+    stderr = sys.stderr
+    sys.stderr = open(os.devnull, "w")
     for stack in mcp_stacks:
         if stack:
             try:
                 await stack.aclose()
             except BaseException:
                 pass
+    sys.stderr = stderr
 
 
 def main():

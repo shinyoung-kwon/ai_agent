@@ -36,7 +36,7 @@ def build_network_subgraph(tools: list) -> StateGraph:
             HumanMessage(content=(
                 f"{summaries_ctx}\n" if summaries_ctx else ""
                 f"후보 유전자 목록: {', '.join(candidates)}\n"
-                "이 유전자들의 레귤론과 TF-Target 네트워크를 조회하세요."
+                "이 유전자들의 레귤론과 TF-Target 네트워크를 조회하여, 조건별 특이적 TF 후보군을 도출하고 선정된 이유를 간략히 설명해주세요."
             )),
         ]
         messages.extend(get_tool_loop_messages(state.get("messages", [])))
