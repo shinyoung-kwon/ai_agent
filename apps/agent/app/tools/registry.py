@@ -108,3 +108,5 @@ async def get_tools_for_agent(agent_name: str) -> tuple[list, AsyncExitStack | N
             tools.append(_mcp_tool_to_langchain(session, mcp_tool))
 
     return tools, stack
+
+

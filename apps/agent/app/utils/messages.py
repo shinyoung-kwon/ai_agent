@@ -12,11 +12,12 @@ def get_tool_loop_messages(messages: list) -> list:
     loop = []
     for m in reversed(messages):
         if isinstance(m, ToolMessage):
-            loop.insert(0, m)
+            loop.append(m)
         elif isinstance(m, AIMessage) and getattr(m, "tool_calls", None):
-            loop.insert(0, m)
+            loop.append(m)
         else:
             break
+    loop.reverse()
     return loop
 
 
