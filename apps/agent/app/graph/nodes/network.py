@@ -7,9 +7,8 @@ from langgraph.graph import StateGraph, START, END
 
 from app.graph.state import AgentState
 from app.utils.config import get_llm, get_prompts
-from app.utils.messages import get_tool_loop_messages, format_previous_summaries
-from app.services.network_service import parse_network_data
-from app.services.summary_service import summarize_network
+from app.utils.messages import get_tool_loop_messages
+from app.graph.schemas import NetworkOutput
 
 
 def build_network_subgraph(tools: list) -> StateGraph:
@@ -27,14 +26,10 @@ def build_network_subgraph(tools: list) -> StateGraph:
 
     async def llm_call(state: AgentState):
         candidates = state.get("candidates", [])
-        summaries_ctx = format_previous_summaries(
-            state.get("stage_summaries", [])
-        )
         print(f"\n[Agent B - Network] LLM 호출 중... (입력 유전자: {candidates})")
         messages = [
             SystemMessage(content=system_prompt),
             HumanMessage(content=(
-                f"{summaries_ctx}\n" if summaries_ctx else ""
                 f"후보 유전자 목록: {', '.join(candidates)}\n"
                 "이 유전자들의 레귤론과 TF-Target 네트워크를 조회하여, 조건별 특이적 TF 후보군을 도출하고 선정된 이유를 간략히 설명해주세요."
             )),
@@ -72,7 +67,7 @@ def build_network_subgraph(tools: list) -> StateGraph:
         return "extract"
 
     async def extract_network(state: AgentState):
-        """Extract network data from the final LLM response."""
+        """Extract network data via structured output."""
         last_message = state["messages"][-1]
         content = last_message.content
         if isinstance(content, list):
@@ -80,13 +75,22 @@ def build_network_subgraph(tools: list) -> StateGraph:
                 block.get("text", "") if isinstance(block, dict) else str(block)
                 for block in content
             )
-        network_data = parse_network_data(content)
-        summary = summarize_network(content, network_data)
+        structured_llm = llm.with_structured_output(NetworkOutput)
+        try:
+            result = await structured_llm.ainvoke([
+                HumanMessage(content=content)
+            ])
+            network_data = result.model_dump()
+            interpretation = result.interpretation
+        except Exception as e:
+            print(f"[Agent B - Network] 구조화 파싱 실패: {e}")
+            network_data = {"genes": [], "key_findings": ""}
+            interpretation = ""
         print(f"[Agent B - Network] 완료! 유전자 {len(network_data['genes'])}개 추출됨")
         print("-" * 50)
         return {
             "network_data": network_data,
-            "stage_summaries": [summary],
+            "interpretations": [f"[Network] {interpretation}"],
         }
 
     graph = StateGraph(AgentState)

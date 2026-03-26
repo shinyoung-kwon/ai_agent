@@ -19,15 +19,3 @@ def get_tool_loop_messages(messages: list) -> list:
             break
     loop.reverse()
     return loop
-
-
-def format_previous_summaries(stage_summaries: list[str]) -> str:
-    """Format previous stage summaries as context for the current agent.
-
-    Returns formatted string with all accumulated summaries,
-    or empty string if no summaries exist.
-    """
-    if not stage_summaries:
-        return ""
-
-    return "=== 이전 단계 분석 요약 ===\n" + "\n\n".join(stage_summaries) + "\n==="

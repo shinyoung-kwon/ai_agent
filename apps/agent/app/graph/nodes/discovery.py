@@ -8,8 +8,7 @@ from langgraph.graph import StateGraph, START, END
 from app.graph.state import AgentState
 from app.utils.config import get_llm, get_prompts
 from app.utils.messages import get_tool_loop_messages
-from app.services.discovery_service import parse_gene_list
-from app.services.summary_service import summarize_discovery
+from app.graph.schemas import DiscoveryOutput
 
 
 def build_discovery_subgraph(tools: list) -> StateGraph:
@@ -67,7 +66,7 @@ def build_discovery_subgraph(tools: list) -> StateGraph:
         return "extract"
 
     async def extract_candidates(state: AgentState):
-        """Extract candidate gene list from the final LLM response."""
+        """Extract candidate gene list via structured output."""
         last_message = state["messages"][-1]
         content = last_message.content
         if isinstance(content, list):
@@ -75,13 +74,22 @@ def build_discovery_subgraph(tools: list) -> StateGraph:
                 block.get("text", "") if isinstance(block, dict) else str(block)
                 for block in content
             )
-        candidates = parse_gene_list(content)
-        summary = summarize_discovery(content, candidates)
+        structured_llm = llm.with_structured_output(DiscoveryOutput)
+        try:
+            result = await structured_llm.ainvoke([
+                HumanMessage(content=content)
+            ])
+            candidates = result.candidates
+            interpretation = result.interpretation
+        except Exception as e:
+            print(f"[Agent A - Discovery] 구조화 파싱 실패: {e}")
+            candidates = []
+            interpretation = ""
         print(f"[Agent A - Discovery] 완료! 후보 유전자: {candidates}")
         print("-" * 50)
         return {
             "candidates": candidates,
-            "stage_summaries": [summary],
+            "interpretations": [f"[Discovery] {interpretation}"],
         }
 
     graph = StateGraph(AgentState)

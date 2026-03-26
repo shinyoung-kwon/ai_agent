@@ -7,8 +7,8 @@ from langgraph.graph import StateGraph, START, END
 
 from app.graph.state import AgentState
 from app.utils.config import get_llm, get_prompts
-from app.utils.messages import get_tool_loop_messages, format_previous_summaries
-from app.services.validation_service import parse_validation_results
+from app.utils.messages import get_tool_loop_messages
+from app.graph.schemas import ValidationOutput
 
 
 def build_validation_subgraph(tools: list) -> StateGraph:
@@ -27,14 +27,10 @@ def build_validation_subgraph(tools: list) -> StateGraph:
     async def llm_call(state: AgentState):
         candidates = state.get("candidates", [])
         reasoning = state.get("reasoning", "")
-        summaries_ctx = format_previous_summaries(
-            state.get("stage_summaries", [])
-        )
         print(f"\n[Agent D - Validation] LLM 호출 중... (후보: {candidates})")
         messages = [
             SystemMessage(content=system_prompt),
             HumanMessage(content=(
-                f"{summaries_ctx}\n" if summaries_ctx else ""
                 f"후보 유전자: {', '.join(candidates)}\n"
                 f"분석 결과: {reasoning}\n\n"
                 "위 후보들에 대해 시뮬레이션을 실행하고 "
@@ -74,7 +70,7 @@ def build_validation_subgraph(tools: list) -> StateGraph:
         return "extract"
 
     async def extract_validation(state: AgentState):
-        """Extract validation results from the final LLM response."""
+        """Extract validation results via structured output."""
         last_message = state["messages"][-1]
         content = last_message.content
         if isinstance(content, list):
@@ -82,11 +78,23 @@ def build_validation_subgraph(tools: list) -> StateGraph:
                 block.get("text", "") if isinstance(block, dict) else str(block)
                 for block in content
             )
-        validation_results = parse_validation_results(content)
-        confirmed = validation_results[0]["confirmed_biomarkers"]
-        print(f"[Agent D - Validation] 완료! 확정 바이오마커 {len(confirmed)}개 추출됨")
+        structured_llm = llm.with_structured_output(ValidationOutput)
+        try:
+            result = await structured_llm.ainvoke([
+                HumanMessage(content=content)
+            ])
+            validation_results = result.model_dump()
+            interpretation = result.interpretation
+        except Exception as e:
+            print(f"[Agent D - Validation] 구조화 파싱 실패: {e}")
+            validation_results = {"confirmed_biomarkers": [], "summary": ""}
+            interpretation = ""
+        print(f"[Agent D - Validation] 완료! 확정 바이오마커 {len(validation_results['confirmed_biomarkers'])}개 추출됨")
         print("-" * 50)
-        return {"validation_results": validation_results}
+        return {
+            "validation_results": validation_results,
+            "interpretations": [f"[Validation] {interpretation}"],
+        }
 
     graph = StateGraph(AgentState)
     graph.add_node("llm_call", llm_call)
