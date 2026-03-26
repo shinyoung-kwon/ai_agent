@@ -12,18 +12,6 @@ from typing import Annotated, TypedDict
 from langchain_core.messages import BaseMessage
 
 
-class NetworkData(TypedDict):
-    """Output structure of Agent B (Network)."""
-    genes: list[str]
-    raw_response: str
-
-
-class ValidationResult(TypedDict):
-    """Single validation result entry from Agent D (Validation)."""
-    confirmed_biomarkers: list[str]
-    raw_response: str
-
-
 class AgentState(TypedDict):
     """State shared across all agents in the pipeline."""
 
@@ -33,17 +21,17 @@ class AgentState(TypedDict):
     # Chat message history (accumulates via operator.add)
     messages: Annotated[list[BaseMessage], operator.add]
 
-    # Agent A (Discovery): candidate biomarkers from literature
+    # Agent A (Discovery): candidate biomarker gene symbols
     candidates: list[str]
 
-    # Agent B (Network): interaction network / pathway data
-    network_data: NetworkData
+    # Agent B (Network): structured network output (genes, key_findings)
+    network_data: dict
 
-    # Agent C (Reasoning): RAG-based analysis and ranking
-    reasoning: str
+    # Agent C (Reasoning): structured ranking output (rankings, recommendation)
+    reasoning: dict
 
-    # Agent D (Validation): final validated results
-    validation_results: ValidationResult
+    # Agent D (Validation): structured validation output (confirmed_biomarkers, summary)
+    validation_results: dict
 
-    # Summaries from each completed stage (accumulates via operator.add)
-    stage_summaries: Annotated[list[str], operator.add]
+    # Bioinformatics interpretations from each stage (accumulates via operator.add)
+    interpretations: Annotated[list[str], operator.add]

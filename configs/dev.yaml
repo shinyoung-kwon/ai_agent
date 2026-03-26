@@ -1,6 +1,6 @@
 llm:
   model: claude-sonnet-4-20250514
-  temperature: 0
+  temperature: 0.1
 
 mcp_servers:
   # Mock 서버 (테스트용)

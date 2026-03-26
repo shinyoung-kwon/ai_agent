@@ -54,7 +54,7 @@ def setup_langsmith():
         print("[LangSmith] WARNING: LANGSMITH_API_KEY not set. Tracing disabled.")
         os.environ["LANGSMITH_TRACING"] = "false"
     else:
-        print(f"[LangSmith] Tracing enabled — project: {project_name}")
+        print(f"[LangSmith] Tracing enabled - project: {project_name}")
 
 
 def get_project_root() -> Path:
