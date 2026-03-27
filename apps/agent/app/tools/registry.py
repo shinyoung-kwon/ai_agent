@@ -76,36 +76,40 @@ def _mcp_tool_to_langchain(session: ClientSession, mcp_tool) -> StructuredTool:
 
 async def get_tools_for_agent(agent_name: str) -> tuple[list, AsyncExitStack | None]:
     """
-    Connect to the MCP server for the given agent and return LangChain tools.
+    Connect to MCP server(s) for the given agent and return LangChain tools.
+
+    Supports multi-server profiles. Each entry in `servers` list connects
+    to a separate MCP server, and all tools are merged into a single list.
 
     Returns:
         (tools, stack)
-        For agents with no server (e.g. reasoning), returns ([], None).
+        For agents with no servers (e.g. reasoning), returns ([], None).
         Caller must call `await stack.aclose()` when done.
     """
     profile = _load_profile(agent_name)
+    servers = profile.get("servers", [])
 
-    if profile.get("server") is None:
+    if not servers:
         return [], None
 
     config = get_config()
-    server_name = profile["server"]
-    command_str = config["mcp_servers"][server_name]
-    server_params = _parse_server_command(command_str)
-    allowed_tools = set(profile.get("tools", []))
-
-    # Connect to MCP server using AsyncExitStack
     stack = AsyncExitStack()
-    streams = await stack.enter_async_context(stdio_client(server_params))
-    session = await stack.enter_async_context(ClientSession(*streams))
-    await session.initialize()
-
-    # List tools and filter by profile
-    response = await session.list_tools()
     tools = []
-    for mcp_tool in response.tools:
-        if mcp_tool.name in allowed_tools:
-            tools.append(_mcp_tool_to_langchain(session, mcp_tool))
+
+    for entry in servers:
+        server_name = entry["server"]
+        command_str = config["mcp_servers"][server_name]
+        server_params = _parse_server_command(command_str)
+        allowed_tools = set(entry.get("tools", []))
+
+        streams = await stack.enter_async_context(stdio_client(server_params))
+        session = await stack.enter_async_context(ClientSession(*streams))
+        await session.initialize()
+
+        response = await session.list_tools()
+        for mcp_tool in response.tools:
+            if mcp_tool.name in allowed_tools:
+                tools.append(_mcp_tool_to_langchain(session, mcp_tool))
 
     return tools, stack
 

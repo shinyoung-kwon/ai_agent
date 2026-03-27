@@ -1,4 +1,10 @@
-server: discovery
-tools:
-  - get_expression
-  - get_deg_list
+servers:
+  - server: scanpy
+    tools:
+      - get_deg_list
+      - get_expression
+  - server: cellneighborex
+    tools:
+      - ccigenes
+      - ccipairs
+# TODO: MCP 서버 확정 후 도구 이름 업데이트

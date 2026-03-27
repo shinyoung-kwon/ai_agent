@@ -18,7 +18,7 @@ def build_reasoning_subgraph() -> StateGraph:
     async def llm_call(state: AgentState):
         candidates = state.get("candidates", [])
         network_data = state.get("network_data", {})
-        print(f"\n[Agent C - Reasoning] LLM 호출 중... (후보: {candidates})")
+        print(f"\n[Reasoning Agent] LLM 호출 중... (후보: {candidates})")
         messages = [
             SystemMessage(content=system_prompt),
             HumanMessage(content=(
@@ -39,11 +39,11 @@ def build_reasoning_subgraph() -> StateGraph:
                 f"{r.rank}. {r.gene}" for r in result.rankings
             )
         except Exception as e:
-            print(f"[Agent C - Reasoning] 구조화 파싱 실패: {e}")
+            print(f"[Reasoning Agent] 구조화 파싱 실패: {e}")
             reasoning = {"rankings": [], "recommendation": ""}
             interpretation = ""
             summary = "파싱 실패"
-        print("[Agent C - Reasoning] 완료! 생물학적 타당성 분석 완료")
+        print("[Reasoning Agent] 완료! 생물학적 타당성 분석 완료")
         print("-" * 50)
         return {
             "messages": [AIMessage(content=summary)],

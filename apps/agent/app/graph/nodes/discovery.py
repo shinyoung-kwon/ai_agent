@@ -25,19 +25,20 @@ def build_discovery_subgraph(tools: list) -> StateGraph:
     tools_by_name = {t.name: t for t in tools}
 
     async def llm_call(state: AgentState):
-        print("\n[Agent A - Discovery] LLM 호출 중...")
+        print("\n[Discovery Agent] LLM 호출 중...")
         messages = [
             SystemMessage(content=system_prompt),
             HumanMessage(content=(
                 f"질환/주제: {state['query']}\n"
-                "차등발현유전자(DEG)를 조회하여 바이오마커 후보 목록을 도출하고 선정된 이유를 간략히 설명해주세요."
+                "차등발현유전자(DEG)를 조회하여 바이오마커 후보 목록을 도출하고, "
+                "사용한 도구의 결과를 해석해주세요."
             )),
         ]
         messages.extend(get_tool_loop_messages(state.get("messages", [])))
         response = await llm_with_tools.ainvoke(messages)
         if hasattr(response, "tool_calls") and response.tool_calls:
             tool_names = [tc["name"] for tc in response.tool_calls]
-            print(f"[Agent A - Discovery] 도구 호출 요청: {tool_names}")
+            print(f"[Discovery Agent] 도구 호출 요청: {tool_names}")
         return {"messages": [response]}
 
     async def tool_node(state: AgentState):
@@ -51,7 +52,7 @@ def build_discovery_subgraph(tools: list) -> StateGraph:
                     tool_call_id=tool_call["id"],
                 ))
                 continue
-            print(f"[Agent A - Discovery] 도구 실행: {tool_call['name']}({tool_call['args']})")
+            print(f"[Discovery Agent] 도구 실행: {tool_call['name']}({tool_call['args']})")
             try:
                 result = await tool.ainvoke(tool_call["args"])
                 results.append(ToolMessage(content=str(result), tool_call_id=tool_call["id"]))
@@ -77,15 +78,19 @@ def build_discovery_subgraph(tools: list) -> StateGraph:
         structured_llm = llm.with_structured_output(DiscoveryOutput)
         try:
             result = await structured_llm.ainvoke([
+                SystemMessage(content=(
+                    "You are the Discovery agent. Extract candidate genes and provide "
+                    "interpretation of the tool results used during analysis."
+                )),
                 HumanMessage(content=content)
             ])
             candidates = result.candidates
             interpretation = result.interpretation
         except Exception as e:
-            print(f"[Agent A - Discovery] 구조화 파싱 실패: {e}")
+            print(f"[Discovery Agent] 구조화 파싱 실패: {e}")
             candidates = []
             interpretation = ""
-        print(f"[Agent A - Discovery] 완료! 후보 유전자: {candidates}")
+        print(f"[Discovery Agent] 완료! 후보 유전자: {candidates}")
         print("-" * 50)
         return {
             "candidates": candidates,
