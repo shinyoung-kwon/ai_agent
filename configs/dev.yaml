@@ -4,11 +4,10 @@ llm:
 
 mcp_servers:
   # Mock 서버 (테스트용)
-  discovery: "python mcp-servers/test_discovery_server.py"
+  scanpy: "python mcp-servers/test_discovery_server1.py"
+  cellneighborex: "python mcp-servers/test_discovery_server2.py"
   network: "python mcp-servers/test_network_server.py"
   validation: "python mcp-servers/test_validation_server.py"
-  # 실제 바이오 서버
-  discovery_bio: "python mcp-servers/bio/discovery_server.py"
 
 langsmith:
   project: ai-agent-TargetDiscovery

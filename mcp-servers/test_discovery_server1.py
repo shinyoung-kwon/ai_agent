@@ -1,8 +1,8 @@
 """
-Discovery MCP Server (Agent A) — LangGraph 연결 확인용
-유전자 발현 데이터 조회를 모사한다. 외부 API 호출 없음.
+Discovery MCP Server 1 (scanpy) — LangGraph 연결 확인용
+scanpy 기반 DEG 분석 및 발현 데이터 조회를 모사한다. 외부 API 호출 없음.
 
-실행: python mcp-servers/discovery_server.py
+실행: python mcp-servers/test_discovery_server1.py
 """
 
 import asyncio
@@ -12,7 +12,7 @@ from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp import types
 
-app = Server("discovery-server")
+app = Server("scanpy-server")
 
 # Mock gene expression dataset
 MOCK_EXPRESSION = {
@@ -27,11 +27,6 @@ MOCK_EXPRESSION = {
 @app.list_tools()
 async def list_tools():
     return [
-        types.Tool(
-            name="ping",
-            description="서버 연결 상태를 확인한다.",
-            inputSchema={"type": "object", "properties": {}},
-        ),
         types.Tool(
             name="get_expression",
             description="유전자 이름으로 발현 데이터(log2FC, p-value)를 조회한다.",
@@ -65,9 +60,6 @@ async def list_tools():
 
 @app.call_tool()
 async def call_tool(name: str, arguments: dict):
-    if name == "ping":
-        return [types.TextContent(type="text", text="pong from discovery-server")]
-
     if name == "get_expression":
         gene = arguments.get("gene", "").upper()
         data = MOCK_EXPRESSION.get(gene)

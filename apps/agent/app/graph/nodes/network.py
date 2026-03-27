@@ -26,19 +26,21 @@ def build_network_subgraph(tools: list) -> StateGraph:
 
     async def llm_call(state: AgentState):
         candidates = state.get("candidates", [])
-        print(f"\n[Agent B - Network] LLM 호출 중... (입력 유전자: {candidates})")
+        print(f"\n[Network Agent] LLM 호출 중... (입력 유전자: {candidates})")
         messages = [
             SystemMessage(content=system_prompt),
             HumanMessage(content=(
                 f"후보 유전자 목록: {', '.join(candidates)}\n"
-                "이 유전자들의 레귤론과 TF-Target 네트워크를 조회하여, 조건별 특이적 TF 후보군을 도출하고 선정된 이유를 간략히 설명해주세요."
+                "이 유전자들의 레귤론과 TF-Target 네트워크를 조회하여, "
+                "조건별 특이적 TF 후보군을 도출하고, "
+                "사용한 도구의 결과를 해석해주세요."
             )),
         ]
         messages.extend(get_tool_loop_messages(state.get("messages", [])))
         response = await llm_with_tools.ainvoke(messages)
         if hasattr(response, "tool_calls") and response.tool_calls:
             tool_names = [tc["name"] for tc in response.tool_calls]
-            print(f"[Agent B - Network] 도구 호출 요청: {tool_names}")
+            print(f"[Network Agent] 도구 호출 요청: {tool_names}")
         return {"messages": [response]}
 
     async def tool_node(state: AgentState):
@@ -52,7 +54,7 @@ def build_network_subgraph(tools: list) -> StateGraph:
                     tool_call_id=tool_call["id"],
                 ))
                 continue
-            print(f"[Agent B - Network] 도구 실행: {tool_call['name']}({tool_call['args']})")
+            print(f"[Network Agent] 도구 실행: {tool_call['name']}({tool_call['args']})")
             try:
                 result = await tool.ainvoke(tool_call["args"])
                 results.append(ToolMessage(content=str(result), tool_call_id=tool_call["id"]))
@@ -78,15 +80,19 @@ def build_network_subgraph(tools: list) -> StateGraph:
         structured_llm = llm.with_structured_output(NetworkOutput)
         try:
             result = await structured_llm.ainvoke([
+                SystemMessage(content=(
+                    "You are the Network agent. Extract network genes and provide "
+                    "interpretation of the tool results used during analysis."
+                )),
                 HumanMessage(content=content)
             ])
             network_data = result.model_dump()
             interpretation = result.interpretation
         except Exception as e:
-            print(f"[Agent B - Network] 구조화 파싱 실패: {e}")
+            print(f"[Network Agent] 구조화 파싱 실패: {e}")
             network_data = {"genes": [], "key_findings": ""}
             interpretation = ""
-        print(f"[Agent B - Network] 완료! 유전자 {len(network_data['genes'])}개 추출됨")
+        print(f"[Network Agent] 완료! 유전자 {len(network_data['genes'])}개 추출됨")
         print("-" * 50)
         return {
             "network_data": network_data,

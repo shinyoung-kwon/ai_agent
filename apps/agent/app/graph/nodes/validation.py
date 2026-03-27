@@ -27,21 +27,22 @@ def build_validation_subgraph(tools: list) -> StateGraph:
     async def llm_call(state: AgentState):
         candidates = state.get("candidates", [])
         reasoning = state.get("reasoning", "")
-        print(f"\n[Agent D - Validation] LLM 호출 중... (후보: {candidates})")
+        print(f"\n[Validation Agent] LLM 호출 중... (후보: {candidates})")
         messages = [
             SystemMessage(content=system_prompt),
             HumanMessage(content=(
                 f"후보 유전자: {', '.join(candidates)}\n"
                 f"분석 결과: {reasoning}\n\n"
-                "위 후보들에 대해 시뮬레이션을 실행하고 "
-                "최종 마스터 레귤레이터를 확정하세요."
+                "위 후보들에 대해 시뮬레이션을 실행하고, "
+                "최종 마스터 레귤레이터를 확정하며, "
+                "사용한 도구의 결과를 해석해주세요."
             )),
         ]
         messages.extend(get_tool_loop_messages(state.get("messages", [])))
         response = await llm_with_tools.ainvoke(messages)
         if hasattr(response, "tool_calls") and response.tool_calls:
             tool_names = [tc["name"] for tc in response.tool_calls]
-            print(f"[Agent D - Validation] 도구 호출 요청: {tool_names}")
+            print(f"[Validation Agent] 도구 호출 요청: {tool_names}")
         return {"messages": [response]}
 
     async def tool_node(state: AgentState):
@@ -55,7 +56,7 @@ def build_validation_subgraph(tools: list) -> StateGraph:
                     tool_call_id=tool_call["id"],
                 ))
                 continue
-            print(f"[Agent D - Validation] 도구 실행: {tool_call['name']}({tool_call['args']})")
+            print(f"[Validation Agent] 도구 실행: {tool_call['name']}({tool_call['args']})")
             try:
                 result = await tool.ainvoke(tool_call["args"])
                 results.append(ToolMessage(content=str(result), tool_call_id=tool_call["id"]))
@@ -81,15 +82,19 @@ def build_validation_subgraph(tools: list) -> StateGraph:
         structured_llm = llm.with_structured_output(ValidationOutput)
         try:
             result = await structured_llm.ainvoke([
+                SystemMessage(content=(
+                    "You are the Validation agent. Extract confirmed biomarkers and provide "
+                    "interpretation of the tool results used during analysis."
+                )),
                 HumanMessage(content=content)
             ])
             validation_results = result.model_dump()
             interpretation = result.interpretation
         except Exception as e:
-            print(f"[Agent D - Validation] 구조화 파싱 실패: {e}")
+            print(f"[Validation Agent] 구조화 파싱 실패: {e}")
             validation_results = {"confirmed_biomarkers": [], "summary": ""}
             interpretation = ""
-        print(f"[Agent D - Validation] 완료! 확정 바이오마커 {len(validation_results['confirmed_biomarkers'])}개 추출됨")
+        print(f"[Validation Agent] 완료! 확정 바이오마커 {len(validation_results['confirmed_biomarkers'])}개 추출됨")
         print("-" * 50)
         return {
             "validation_results": validation_results,
